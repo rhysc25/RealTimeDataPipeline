@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
-from pyspark.sql.types import StructType, StringType, DoubleType, LongType
+from pyspark.sql.types import StructType, StringType, DoubleType, LongType, ArrayType
 
 spark = SparkSession.builder \
     .appName("MarketTickConsumer") \
@@ -17,10 +17,11 @@ df = spark.readStream \
 json_df = df.selectExpr("CAST(value AS STRING) as json_str")
 
 schema = StructType() \
-    .add("symbol", StringType()) \
-    .add("price", DoubleType()) \
-    .add("volume", LongType()) \
-    .add("timestamp", StringType())
+    .add("c", ArrayType(StringType())) \
+    .add("p", DoubleType()) \
+    .add("s", StringType()) \
+    .add("t", LongType()) \
+    .add("v", LongType())
 
 parsed_df = json_df.select(from_json(col("json_str"), schema).alias("data")).select("data.*")
 
