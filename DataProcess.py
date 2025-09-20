@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col
+from pyspark.sql.functions import from_json, col, from_unixtime
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType, ArrayType
 from sqlalchemy import create_engine
 from sqlalchemy import text
@@ -28,34 +28,22 @@ schema = StructType() \
 
 parsed_df = json_df.select(from_json(col("json_str"), schema).alias("data")).select("data.*")
 parsed_df = parsed_df.drop("c")
-
-engine = create_engine("mysql+pymysql://rhys:"+mariaDBpassword+"@"+mariaDBIP+"/quantdb")
+parsed_df = parsed_df.withColumn("t", from_unixtime(col("t") / 1000))
 
 def saveToDB(batch_df, batch_id):
-  
-    pdf = batch_df.toPandas()
-
-    if pdf.empty:
+    if batch_df.rdd.isEmpty(): # Converts to underlying apache RDD (Resilient Distributed Database)
         return
 
-    for symbol in pdf['s'].unique():
-        table_name = f"{symbol}_Ticks"
-
-        with engine.begin() as conn:
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS `{table_name}` (
-                    p FLOAT,
-                    s VARCHAR(16),
-                    t BIGINT NOT NULL,
-                    v INT,
-                    PRIMARY KEY (t)
-                );
-            """))
-
-        # filter this symbol
-        symbol_pdf = pdf[pdf['s'] == symbol]
-
-        symbol_pdf.to_sql(table_name, engine, if_exists='append', index=False)
+    # Write entire batch into one table using jdbc
+    batch_df.write \
+        .format("jdbc") \
+        .option("url", f"jdbc:mysql://{mariaDBIP}/quantdb") \
+        .option("dbtable", "ticks") \
+        .option("user", "rhys") \
+        .option("password", mariaDBpassword) \
+        .option("driver", "com.mysql.cj.jdbc.Driver") \
+        .mode("append") \
+        .save()
 
 query = parsed_df.writeStream \
     .foreachBatch(saveToDB) \
