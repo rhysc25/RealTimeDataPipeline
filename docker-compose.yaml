@@ -33,11 +33,11 @@ services:
       "
 
   producer:
-    build: ./DataFetchAndPublish
+    build: ./producer
     volumes:
-      - ./APIKEYS.py:/app/APIKEYS.py:ro
+      - ./APIKeys.py:/app/APIKeys.py:ro
 
   consumer:
-    build: ./DataProcess
+    build: ./consumer
     volumes:
-      - ./APIKEYS.py:/app/APIKEYS.py:ro
+      - ./APIKeys.py:/app/APIKeys.py:ro
