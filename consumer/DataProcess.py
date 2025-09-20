@@ -1,8 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, from_unixtime
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType, ArrayType
-from sqlalchemy import create_engine
-from sqlalchemy import text
 from APIKeys import mariaDBpassword, mariaDBIP
 
 spark = SparkSession.builder \
@@ -35,7 +33,7 @@ def saveToDB(batch_df, batch_id):
         return
 
     # Write entire batch into one table using jdbc
-    batch_df.write \
+    try: batch_df.write \
         .format("jdbc") \
         .option("url", f"jdbc:mysql://{mariaDBIP}/quantdb") \
         .option("dbtable", "ticks") \
@@ -44,6 +42,7 @@ def saveToDB(batch_df, batch_id):
         .option("driver", "com.mysql.cj.jdbc.Driver") \
         .mode("append") \
         .save()
+    except: pass
 
 query = parsed_df.writeStream \
     .foreachBatch(saveToDB) \

@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  zookeeper:
+    image: zookeeper:3.8
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181" 
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+
+  topic-creator:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - kafka
+    command: >
+      bash -c "
+        sleep 10 &&
+        kafka-topics --create --topic market-ticks 
+        --bootstrap-server kafka:9092 --partitions 3 
+        --replication-factor 1
+      "
+
+  producer:
+    build: ./DataFetchAndPublish
+    volumes:
+      - ./APIKEYS.py:/app/APIKEYS.py:ro
+
+  consumer:
+    build: ./DataProcess
+    volumes:
+      - ./APIKEYS.py:/app/APIKEYS.py:ro
