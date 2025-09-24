@@ -1,12 +1,12 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, from_unixtime
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType, ArrayType
-from APIKeys import mariaDBpassword, mariaDBIP
+from APIKeys import postgresPassword
 
 spark = SparkSession.builder \
     .appName("MarketTickConsumer") \
     .config("spark.jars.packages", 
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3") \
+        "org.postgresql:postgresql:42.7.2") \
     .getOrCreate()
 
 df = spark.readStream \
@@ -35,11 +35,11 @@ def saveToDB(batch_df, batch_id):
     # Write entire batch into one table using jdbc
     try: batch_df.write \
         .format("jdbc") \
-        .option("url", f"jdbc:mysql://{mariaDBIP}/quantdb") \
+        .option("url", "jdbc:postgresql://localhost:5432/quantdb") \
         .option("dbtable", "ticks") \
-        .option("user", "rhys") \
-        .option("password", mariaDBpassword) \
-        .option("driver", "com.mysql.cj.jdbc.Driver") \
+        .option("user", "postgres") \
+        .option("password", f"{postgresPassword}") \
+        .option("driver", "org.postgresql.Driver") \
         .mode("append") \
         .save()
     except: pass
