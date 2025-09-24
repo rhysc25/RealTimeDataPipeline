@@ -5,8 +5,9 @@ from APIKeys import postgresPassword
 
 spark = SparkSession.builder \
     .appName("MarketTickConsumer") \
-    .config("spark.jars.packages", 
-        "org.postgresql:postgresql:42.7.2") \
+    .config("spark.jars.packages",
+            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,"
+            "org.postgresql:postgresql:42.7.2") \
     .getOrCreate()
 
 df = spark.readStream \
@@ -31,6 +32,9 @@ parsed_df = parsed_df.withColumn("t", from_unixtime(col("t") / 1000))
 def saveToDB(batch_df, batch_id):
     if batch_df.rdd.isEmpty(): # Converts to underlying apache RDD (Resilient Distributed Database)
         return
+
+    print(f"\n=== Batch {batch_id} ===")
+    batch_df.show(truncate=False)   # 👈 prints rows to the driver’s stdout (your terminal)
 
     # Write entire batch into one table using jdbc
     try: batch_df.write \
