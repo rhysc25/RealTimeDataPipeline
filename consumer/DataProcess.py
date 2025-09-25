@@ -28,25 +28,24 @@ schema = StructType() \
 parsed_df = json_df.select(from_json(col("json_str"), schema).alias("data")).select("data.*")
 parsed_df = parsed_df.drop("c")
 parsed_df = parsed_df.withColumn("t", from_unixtime(col("t") / 1000))
+parsed_df = parsed_df.withColumn("t", col("t").cast("timestamp"))
 
 def saveToDB(batch_df, batch_id):
     if batch_df.rdd.isEmpty(): # Converts to underlying apache RDD (Resilient Distributed Database)
         return
 
-    print(f"\n=== Batch {batch_id} ===")
-    batch_df.show(truncate=False)   # 👈 prints rows to the driver’s stdout (your terminal)
-
     # Write entire batch into one table using jdbc
     try: batch_df.write \
         .format("jdbc") \
-        .option("url", "jdbc:postgresql://localhost:5432/quantdb") \
+        .option("url", "jdbc:postgresql://host.docker.internal:5432/quantdb") \
         .option("dbtable", "ticks") \
         .option("user", "postgres") \
         .option("password", f"{postgresPassword}") \
         .option("driver", "org.postgresql.Driver") \
         .mode("append") \
         .save()
-    except: pass
+    except Exception as e:
+        print("Error writing to DB:", e)
 
 query = parsed_df.writeStream \
     .foreachBatch(saveToDB) \
