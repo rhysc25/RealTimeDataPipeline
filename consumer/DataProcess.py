@@ -14,6 +14,7 @@ df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "kafka:9092") \
     .option("subscribe", "market-ticks") \
+    .option("startingOffsets", "latest") \
     .load()
 
 json_df = df.selectExpr("CAST(value AS STRING) as json_str")
@@ -37,7 +38,7 @@ def saveToDB(batch_df, batch_id):
     # Write entire batch into one table using jdbc
     try: batch_df.write \
         .format("jdbc") \
-        .option("url", "jdbc:postgresql://host.docker.internal:5432/quantdb") \
+        .option("url", "jdbc:postgresql://database:5432/quantdb") \
         .option("dbtable", "ticks") \
         .option("user", "postgres") \
         .option("password", f"{postgresPassword}") \
